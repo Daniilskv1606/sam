@@ -1555,5 +1555,6 @@ def get_user_count():
 
 # Запуск бота
 print("Бот запущен...")
-bot.polling(none_stop=True)
+
+
 

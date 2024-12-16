@@ -18,6 +18,7 @@ import requests
 import json
 import urllib.parse
 from fastapi import FastAPI, Form, Header, HTTPException
+import uvicorn
 
 
 # Настройка логирования
@@ -49,6 +50,12 @@ user_data = {}
 
 # Список ID администраторов (замените на реальные Telegram user IDs)
 ADMIN_IDS = []  # Пример: [111111111, 222222222]
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello, World!"}
 
 # Инициализация базы данных
 def init_db():
@@ -1555,6 +1562,8 @@ def get_user_count():
 
 # Запуск бота
 print("Бот запущен...")
-
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))  # Используем порт из переменной окружения
+    uvicorn.run(app, host="0.0.0.0", port=port)  # Запускаем сервер на указанном порту
 
 

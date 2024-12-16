@@ -56,7 +56,7 @@ app = FastAPI()
 @app.get("/")
 async def root():
     return {"message": "Hello, World!"}
-
+    
 # Инициализация базы данных
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
@@ -1563,7 +1563,8 @@ def get_user_count():
 # Запуск бота
 print("Бот запущен...")
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))  # Используем порт из переменной окружения
-    uvicorn.run(app, host="0.0.0.0", port=port)  # Запускаем сервер на указанном порту
+    # Используем порт из переменной окружения PORT или 10000 по умолчанию
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 

@@ -51,6 +51,20 @@ user_data = {}
 # Список ID администраторов (замените на реальные Telegram user IDs)
 ADMIN_IDS = []  # Пример: [111111111, 222222222]
 
+url = "https://sam-3.onrender.com/"
+data = {
+    'order_id': '1234',
+    'chat_id': '5678'
+}
+headers = {
+    'sign': 'your_signature'
+}
+response = requests.post(url, data=data, headers=headers)
+
+print(response.status_code)
+print(response.json())
+
+
 app = FastAPI()
 
 @app.get("/")

@@ -51,7 +51,7 @@ user_data = {}
 # Список ID администраторов (замените на реальные Telegram user IDs)
 ADMIN_IDS = []  # Пример: [111111111, 222222222]
 
-url = "https://sam-3.onrender.com/"
+url = "https://sam-4.onrender.com/"
 data = {
     'order_id': '1234',
     'chat_id': '5678'

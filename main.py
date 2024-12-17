@@ -54,15 +54,34 @@ ADMIN_IDS = []  # Пример: [111111111, 222222222]
 
 app = FastAPI()
 
-async def send_telegram_message(chat_id: str, message: str):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {
-        'chat_id': chat_id,
-        'text': message,
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, data=payload)
-        response.raise_for_status()
+# Обработчик Webhook от Telegram
+@app.post("/telegram")
+async def telegram_webhook(request: Request):
+    try:
+        json_str = await request.json()
+        update = telebot.types.Update.de_json(json_str)
+        bot.process_new_updates([update])
+        return {"ok": True}
+    except Exception as e:
+        logging.error(f"Ошибка при обработке Webhook: {e}")
+        raise HTTPException(status_code=400, detail="Invalid request")
+
+def set_webhook():
+    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
+    webhook_url = "https://sam-10.onrender.com"  # Замените на ваш фактический URL
+    response = requests.post(url, data={"url": webhook_url})
+    if response.status_code == 200:
+        print("Webhook установлен успешно.")
+    else:
+        print("Ошибка при установке Webhook:", response.text)
+
+# Установите Webhook при запуске
+set_webhook()
+
+# Пример обработчика команды /manya
+@bot.message_handler(commands=['manya'])
+def send_welcome(message):
+    bot.reply_to(message, "Добро пожаловать!")
 
 @app.post("/")
 async def process_webhook(
@@ -72,25 +91,11 @@ async def process_webhook(
     status: str = Form(...)
 ):
     # Логика обработки
-    if status == "success":
-        message = f"Оплата прошла успешно: ID транзакции {transaction_id}, сумма {amount} {currency}"
-        for chat_id in stored_chat_ids:
-            await send_telegram_message(chat_id, message)
-
     return {"message": "Webhook processed successfully"}
 
 @app.get("/")
 async def root():
     return {"message": "Hello, World!"}
-
-@app.post("/telegram")
-async def telegram_webhook(request: Request):
-    data = await request.json()
-    chat_id = data.get('message', {}).get('chat', {}).get('id')
-    if chat_id:
-        stored_chat_ids.add(chat_id)
-    return {"ok": True}
-
     
 # Инициализация базы данных
 def init_db():

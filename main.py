@@ -51,11 +51,24 @@ user_data = {}
 # Список ID администраторов (замените на реальные Telegram user IDs)
 ADMIN_IDS = []  # Пример: [111111111, 222222222]
 
-app = FastAPI()
+@app.post("/")
+async def handle_webhook(
+    transaction_id: str = Form(...),
+    amount: float = Form(...),
+    currency: str = Form(...),
+    status: str = Form(...)
+):
+    # Пример простой обработки
+    if status != "success":
+        raise HTTPException(status_code=400, detail="Transaction not successful")
+
+    # Вернуть HTTP-код 200 для успешной обработки
+    return JSONResponse(status_code=200, content={"message": "Webhook processed successfully"})
 
 @app.get("/")
 async def root():
     return {"message": "Hello, World!"}
+
     
 # Инициализация базы данных
 def init_db():

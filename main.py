@@ -55,7 +55,6 @@ ADMIN_IDS = []  # Пример: [111111111, 222222222]
 
 app = FastAPI()
 
-# Обработчик Webhook от Telegram
 @app.post("/telegram")
 async def telegram_webhook(request: Request):
     try:
@@ -69,17 +68,15 @@ async def telegram_webhook(request: Request):
 
 def set_webhook():
     url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
-    webhook_url = "https://sam-10.onrender.com"  # Замените на ваш фактический URL
+    webhook_url = "https://sam-10.onrender.com/telegram"  # Убедитесь, что этот URL правильный
     response = requests.post(url, data={"url": webhook_url})
     if response.status_code == 200:
         print("Webhook установлен успешно.")
     else:
         print("Ошибка при установке Webhook:", response.text)
 
-# Установите Webhook при запуске
 set_webhook()
 
-# Пример обработчика команды /manya
 @bot.message_handler(commands=['manya'])
 def send_welcome(message):
     bot.reply_to(message, "Добро пожаловать!")

@@ -17,8 +17,10 @@ import hmac
 import requests
 import json
 import urllib.parse
-from fastapi import FastAPI, Form, Header, HTTPException
+from fastapi import FastAPI, Form, Header, HTTPException, Request
 import uvicorn
+from fastapi.responses import JSONResponse
+import httpx
 
 
 # Настройка логирования
@@ -34,7 +36,6 @@ os.makedirs(TEMP_PHOTO_DIR, exist_ok=True)
 
 TOKEN = '7177665959:AAF5WkUoLg7oZty0XocusW6kDDCUeBd8pww'  # Замените на ваш токен
 bot = telebot.TeleBot(TOKEN)
-app = FastAPI()
 secret_key = '0118af80a1a25a7ec35edb78b4c7f743f72b8991aee68927add8d07e41e6a5f6'
 
 # Получаем информацию о боте
@@ -53,6 +54,16 @@ ADMIN_IDS = []  # Пример: [111111111, 222222222]
 
 app = FastAPI()
 
+async def send_telegram_message(chat_id: str, message: str):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': message,
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, data=payload)
+        response.raise_for_status()
+
 @app.post("/")
 async def process_webhook(
     transaction_id: str = Form(...),
@@ -61,11 +72,24 @@ async def process_webhook(
     status: str = Form(...)
 ):
     # Логика обработки
+    if status == "success":
+        message = f"Оплата прошла успешно: ID транзакции {transaction_id}, сумма {amount} {currency}"
+        for chat_id in stored_chat_ids:
+            await send_telegram_message(chat_id, message)
+
     return {"message": "Webhook processed successfully"}
 
 @app.get("/")
 async def root():
     return {"message": "Hello, World!"}
+
+@app.post("/telegram")
+async def telegram_webhook(request: Request):
+    data = await request.json()
+    chat_id = data.get('message', {}).get('chat', {}).get('id')
+    if chat_id:
+        stored_chat_ids.add(chat_id)
+    return {"ok": True}
 
     
 # Инициализация базы данных

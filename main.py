@@ -356,7 +356,7 @@ async def process_payment_notification(
 
 def create_payment_link(order_id, product_name, price, quantity, payment_method):
     secret_key = '0118af80a1a25a7ec35edb78b4c7f743f72b8991aee68927add8d07e41e6a5f6'
-    link_to_form = 'https://daryasunshine.payform.ru'
+    link_to_form = 'https://payform.ru/de5LNMf/'
 
     order_data = {
         'order_id': order_id,

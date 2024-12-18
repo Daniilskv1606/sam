@@ -21,6 +21,7 @@ from fastapi import FastAPI, Form, Header, HTTPException, Request
 import uvicorn
 from fastapi.responses import JSONResponse
 import httpx
+import uuid
 
 
 # Настройка логирования
@@ -94,6 +95,20 @@ async def process_webhook(
 @app.get("/")
 async def root():
     return {"message": "Hello, World!"}
+
+# Создаем базу данных и таблицу orders
+def create_database():
+    with sqlite3.connect('orders.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS orders (
+                order_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL
+            )
+        ''')
+        conn.commit()
+
+create_database()
     
 # Инициализация базы данных
 def init_db():
@@ -268,6 +283,24 @@ def export_users_confirmation_menu():
     markup.add(InlineKeyboardButton("Отмена", callback_data='admin_confirm_export_no'))
     return markup
 
+def save_order(order_id, user_id):
+    """Сохранение order_id и id пользователя в базу данных."""
+    with sqlite3.connect('orders.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO orders (order_id, user_id) VALUES (?, ?)', (order_id, user_id))
+        conn.commit()
+
+def generate_unique_order_id():
+    """Генерация уникального order_id."""
+    return str(uuid.uuid4())
+
+def fetch_orders():
+    """Извлечение всех заказов из базы данных."""
+    with sqlite3.connect('orders.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT order_id, user_id FROM orders')
+        return cursor.fetchall()
+
 def verify_signature(data: dict, signature: str, secret_key: str) -> bool:
     """
     Проверка подписи запроса.
@@ -280,44 +313,20 @@ def verify_signature(data: dict, signature: str, secret_key: str) -> bool:
     ).hexdigest()
     return hmac.compare_digest(calculated_signature, signature)
 
-@app.post("/webhook")
-async def payment_success(
-    order_id: str = Form(...),
-    sign: str = Header(...),
-    chat_id: str = Form(...)
-):
-    data = {
-        'order_id': order_id
-    }
-
-    if not verify_signature(data, sign, secret_key):
-        raise HTTPException(status_code=403, detail="Invalid signature")
-
-    # Обработка order_id
-    print(f"Received order_id: {order_id}")
-
-    # Отправляем сообщение пользователю в Telegram
-    bot.send_message(chat_id, "Оплата прошла успешно!")
-
-    return {"status": "success"}
-
 
 def create_payment_link(order_id, product_name, price, quantity, payment_method):
-    # Замените на ваш секретный ключ
     secret_key = '0118af80a1a25a7ec35edb78b4c7f743f72b8991aee68927add8d07e41e6a5f6'
-
-    # Замените на ваш URL платежной формы
     link_to_form = 'https://daryasunshine.payform.ru'
 
     order_data = {
-        'order_id':'Авторское пособие «Личный бренд»',
-        'customer_phone': '+79998887755',
-        'customer_email': 'user@example.com',
+        'order_id': order_id,
+        'customer_phone': '+79998887755',  # Замените на реальные данные
+        'customer_email': 'user@example.com',  # Замените на реальные данные
         'products': [
             {
-                'name': 'Обучающие материалы',
-                'price': 1590.00,
-                'quantity': 1,
+                'name': product_name,
+                'price': price,
+                'quantity': quantity,
             }
         ],
         'customer_extra': 'Полная оплата курса',
@@ -339,9 +348,7 @@ def create_payment_link(order_id, product_name, price, quantity, payment_method)
 
     sorted_params = sorted(params.items())
     encoded_params = urllib.parse.urlencode(sorted_params)
-
     signature = hmac.new(secret_key.encode(), encoded_params.encode(), hashlib.sha256).hexdigest()
-
     payment_url = f'{link_to_form}?{encoded_params}&sign={signature}'
 
     return payment_url
@@ -356,22 +363,36 @@ def set_product(name, price, quantity):
     }
 
 
-# Обработчик команды /buy
 @bot.message_handler(commands=['buy'])
 def buy(message):
-    order_id = 1234  # Замените на генерацию уникального ID заказа
-
+    user_id = message.chat.id  # Используем chat.id как user_id
+    order_id = generate_unique_order_id()
     product_name = 'Авторское пособие «Личный бренд»'
-    price = 1590.00  # Цена товара
+    price = 1590.00
+    quantity = 1
+    payment_method = 'AC'
 
-    quantity = 1  # Количество товара
+    # Сохраняем order_id и user_id в базе данных
+    save_order(order_id, str(user_id))
 
-    payment_method = 'AC'  # Метод оплаты картой Р
-
+    # Формируем ссылку на оплату
     payment_link = create_payment_link(order_id, product_name, price, quantity, payment_method)
 
     # Отправляем пользователю ссылку на оплату
-    bot.send_message(message.chat.id, f"Ссылка на оплату: {payment_link}")
+    bot.send_message(user_id, f"Ссылка на оплату: {payment_link}")
+
+
+@bot.message_handler(commands=['show_orders'])
+def show_orders(message):
+    orders = fetch_orders()
+    if not orders:
+        response = "Заказы отсутствуют."
+    else:
+        response = "Список заказов:\n"
+        for order_id, user_id in orders:
+            response += f"Order ID: {order_id}, User ID: {user_id}\n"
+
+    bot.send_message(message.chat.id, response)
 
 
 # Обработчик команды /start

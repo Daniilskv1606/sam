@@ -313,6 +313,41 @@ def verify_signature(data: dict, signature: str, secret_key: str) -> bool:
     ).hexdigest()
     return hmac.compare_digest(calculated_signature, signature)
 
+# Функция для получения user_id по order_id
+def get_user_id_by_order_id(order_id):
+    with sqlite3.connect('orders.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id FROM orders WHERE order_id = ?', (order_id,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+
+@app.post("/payment_notification")
+async def process_payment_notification(
+    order_id: str = Form(...),
+    payment_status: str = Form(...),
+    sign: str = Header(None)
+):
+    # Проверка подписи
+    data = {
+        'order_id': order_id,
+        'payment_status': payment_status
+    }
+
+    if not verify_signature(data, sign):
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    # Проверка статуса оплаты
+    if payment_status == 'success':
+        user_id = get_user_id_by_order_id(order_id)
+        if user_id:
+            # Отправка сообщения в Telegram
+            bot.send_message(user_id, "Оплата прошла успешно!")
+            return {"status": "success"}
+        else:
+            return {"error": "Order ID not found"}, 404
+
+    return {"status": "ignored"}, 200
+
 
 def create_payment_link(order_id, product_name, price, quantity, payment_method):
     secret_key = '0118af80a1a25a7ec35edb78b4c7f743f72b8991aee68927add8d07e41e6a5f6'

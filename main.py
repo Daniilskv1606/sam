@@ -379,6 +379,7 @@ def create_payment_link(order_id, product_name, price, quantity, payment_method)
         'customer_email': order_data['customer_email'],
         'customer_extra': order_data['customer_extra'],
         'do': order_data['do'],
+        'demo_mode': 1  # Добавляем параметр demo_mode=1
     }
 
     for idx, product in enumerate(order_data['products']):
@@ -394,7 +395,6 @@ def create_payment_link(order_id, product_name, price, quantity, payment_method)
     return payment_url
 
 
-# Функция настройки товара
 def set_product(name, price, quantity):
     return {
         'name': name,
@@ -402,24 +402,29 @@ def set_product(name, price, quantity):
         'quantity': quantity
     }
 
-
 @bot.message_handler(commands=['buy'])
 def buy(message):
     user_id = message.chat.id  # Используем chat.id как user_id
-    order_id = generate_unique_order_id()
-    product_name = 'Авторское пособие «Личный бренд»'
-    price = 50.00
-    quantity = 1
-    payment_method = 'AC'
+    try:
+        order_id = generate_unique_order_id()
+        product_name = 'Авторское пособие «Личный бренд»'
+        price = 50.00
+        quantity = 1
+        payment_method = 'AC'
 
-    # Сохраняем order_id и user_id в базе данных
-    save_order(order_id, str(user_id))
+        # Сохраняем order_id и user_id в базе данных
+        save_order(order_id, str(user_id))
 
-    # Формируем ссылку на оплату
-    payment_link = create_payment_link(order_id, product_name, price, quantity, payment_method)
+        # Формируем ссылку на оплату
+        payment_link = create_payment_link(order_id, product_name, price, quantity, payment_method)
 
-    # Отправляем пользователю ссылку на оплату
-    bot.send_message(user_id, f"Ссылка на оплату: {payment_link}")
+        # Отправляем пользователю ссылку на оплату
+        bot.send_message(user_id, f"Ссылка на оплату: {payment_link}")
+        logging.info(f"Payment link sent to user {user_id}: {payment_link}")
+
+    except Exception as e:
+        logging.error(f"Error processing buy command for user {user_id}: {e}")
+        bot.send_message(user_id, "Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.")
 
 
 @bot.message_handler(commands=['show_orders'])

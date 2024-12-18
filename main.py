@@ -301,21 +301,16 @@ def fetch_orders():
         cursor.execute('SELECT order_id, user_id FROM orders')
         return cursor.fetchall()
 
-# Функция для проверки подписи
 def verify_signature(data: dict, signature: str) -> bool:
     """Проверка подписи запроса."""
-    # Создаем строку из данных запроса
     message = ''.join(f"{key}={value}" for key, value in sorted(data.items()))
-    # Вычисляем подпись
     calculated_signature = hmac.new(
         secret_key.encode('utf-8'),
         msg=message.encode('utf-8'),
         digestmod=hashlib.sha256
     ).hexdigest()
-    # Сравниваем вычисленную подпись с переданной
     return hmac.compare_digest(calculated_signature, signature)
 
-# Функция для получения user_id по order_id
 def get_user_id_by_order_id(order_id):
     with sqlite3.connect('orders.db') as conn:
         cursor = conn.cursor()
@@ -328,8 +323,12 @@ async def process_payment_notification(
     request: Request,
     sign: str = Header(None)
 ):
-    # Получаем данные из запроса
+    # Логирование заголовков и данных запроса
+    headers = request.headers
     form_data = await request.form()
+    logging.info(f"Headers: {headers}")
+    logging.info(f"Form Data: {form_data}")
+
     data = dict(form_data)
 
     # Проверяем наличие необходимых полей
@@ -340,7 +339,7 @@ async def process_payment_notification(
         raise HTTPException(status_code=400, detail="Missing parameters")
 
     # Проверка подписи
-    if not verify_signature(data, sign):
+    if not sign or not verify_signature(data, sign):
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     # Проверка статуса оплаты
@@ -354,7 +353,6 @@ async def process_payment_notification(
             raise HTTPException(status_code=404, detail="Order ID not found")
 
     return {"status": "ignored"}
-
 
 def create_payment_link(order_id, product_name, price, quantity, payment_method):
     secret_key = '0118af80a1a25a7ec35edb78b4c7f743f72b8991aee68927add8d07e41e6a5f6'

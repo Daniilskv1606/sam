@@ -410,7 +410,7 @@ def buy(message):
     user_id = message.chat.id  # Используем chat.id как user_id
     order_id = generate_unique_order_id()
     product_name = 'Авторское пособие «Личный бренд»'
-    price = 1590.00
+    price = 50.00
     quantity = 1
     payment_method = 'AC'
 

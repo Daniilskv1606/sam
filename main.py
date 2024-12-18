@@ -301,16 +301,18 @@ def fetch_orders():
         cursor.execute('SELECT order_id, user_id FROM orders')
         return cursor.fetchall()
 
-def verify_signature(data: dict, signature: str, secret_key: str) -> bool:
-    """
-    Проверка подписи запроса.
-    """
+# Функция для проверки подписи
+def verify_signature(data: dict, signature: str) -> bool:
+    """Проверка подписи запроса."""
+    # Создаем строку из данных запроса
     message = ''.join(f"{key}={value}" for key, value in sorted(data.items()))
+    # Вычисляем подпись
     calculated_signature = hmac.new(
         secret_key.encode('utf-8'),
         msg=message.encode('utf-8'),
         digestmod=hashlib.sha256
     ).hexdigest()
+    # Сравниваем вычисленную подпись с переданной
     return hmac.compare_digest(calculated_signature, signature)
 
 # Функция для получения user_id по order_id
@@ -323,16 +325,21 @@ def get_user_id_by_order_id(order_id):
 
 @app.post("/payment_notification")
 async def process_payment_notification(
-    order_id: str = Form(...),
-    payment_status: str = Form(...),
+    request: Request,
     sign: str = Header(None)
 ):
-    # Проверка подписи
-    data = {
-        'order_id': order_id,
-        'payment_status': payment_status
-    }
+    # Получаем данные из запроса
+    form_data = await request.form()
+    data = dict(form_data)
 
+    # Проверяем наличие необходимых полей
+    order_id = data.get('order_id')
+    payment_status = data.get('payment_status')
+
+    if not order_id or not payment_status:
+        raise HTTPException(status_code=400, detail="Missing parameters")
+
+    # Проверка подписи
     if not verify_signature(data, sign):
         raise HTTPException(status_code=400, detail="Invalid signature")
 
@@ -344,9 +351,9 @@ async def process_payment_notification(
             bot.send_message(user_id, "Оплата прошла успешно!")
             return {"status": "success"}
         else:
-            return {"error": "Order ID not found"}, 404
+            raise HTTPException(status_code=404, detail="Order ID not found")
 
-    return {"status": "ignored"}, 200
+    return {"status": "ignored"}
 
 
 def create_payment_link(order_id, product_name, price, quantity, payment_method):
